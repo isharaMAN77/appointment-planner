@@ -8,10 +8,12 @@ namespace AppointmentPlanner.Controllers
     public class HomeController : Controller
     {
         private readonly AppointmentService service;
+        private readonly AppointmentContext _context;
 
-        public HomeController(AppointmentService appointmentService)
+        public HomeController(AppointmentService appointmentService, AppointmentContext context)
         {
             service = appointmentService;
+            _context = context;
         }
 
         public IActionResult Index()
@@ -23,10 +25,10 @@ namespace AppointmentPlanner.Controllers
         public PartialViewResult DashBoard()
         {
             DateTime startDate = service.StartDate;
-            List<Patient> patients = service.Patients;
-            ViewBag.AvailableDoctors = service.Doctors;
-            ViewBag.Activities = service.Activities;
-            ViewBag.SpecializationsData = service.Specializations;
+            List<Patient> patients = service.Patients.ToList();
+            ViewBag.AvailableDoctors = service.Doctors.ToList();
+            ViewBag.Activities = service.Activities.ToList();
+            ViewBag.SpecializationsData = service.Specializations.ToList();
             ViewBag.FirstDayOfWeek = service.GetWeekFirstDate(startDate);
             ViewBag.CurrentDayEvents = service.GetFilteredData(startDate, startDate.AddDays(1));
             ViewBag.CurrentViewEvents = service.GetFilteredData(ViewBag.FirstDayOfWeek, ViewBag.FirstDayOfWeek.AddDays(6));
@@ -49,7 +51,7 @@ namespace AppointmentPlanner.Controllers
                 Doctor? filteredDoctors = service.Doctors.FirstOrDefault(item => item.Id.Equals(eventData.DoctorId));
                 if (filteredPatients != null && filteredDoctors != null)
                 {
-                    appointments.Add(new Appointment(service.GetFormatDate(eventData.StartTime, "hh:mm tt"), filteredPatients.Name, filteredDoctors.Name, eventData.Symptoms, filteredDoctors.Id));
+                    appointments.Add(new Appointment { Time = service.GetFormatDate(eventData.StartTime, "hh:mm tt"), Name = filteredPatients.Name, DoctorName = filteredDoctors.Name, Symptoms = eventData.Symptoms, DoctorId = filteredDoctors.Id });
                 }
             }
             return appointments;
@@ -64,12 +66,12 @@ namespace AppointmentPlanner.Controllers
             ViewBag.WorkDays = new int[] { 0, 1, 2, 3, 4, 5, 6};
             ViewBag.CurrentView = (View)Enum.Parse(typeof(View), service.CalendarSettings.CurrentView);
             ViewBag.FirstDayOfWeek = service.CalendarSettings.FirstDayOfWeek;
-            ViewBag.EventData = service.Hospitals;
+            ViewBag.EventData = service.Hospitals.ToList();
             ViewBag.BookingColor = service.CalendarSettings.BookingColor;
-            ViewBag.ResourceDataSource = service.Doctors;
-            ViewBag.SpecialistCategory = service.Specializations;
-            ViewBag.WaitingList = service.WaitingLists;
-            ViewBag.PatientsData = service.Patients;
+            ViewBag.ResourceDataSource = service.Doctors.ToList();
+            ViewBag.SpecialistCategory = service.Specializations.ToList();
+            ViewBag.WaitingList = service.WaitingLists.ToList();
+            ViewBag.PatientsData = service.Patients.ToList();
             ViewBag.Interval = service.CalendarSettings.Interval;
             return PartialView("Calendar/Calendar");
         }
@@ -77,18 +79,18 @@ namespace AppointmentPlanner.Controllers
         [HttpGet]
         public PartialViewResult Doctors()
         {
-            ViewBag.SpecializationData = service.Specializations;
-            ViewBag.Doctors = service.Doctors;
-            ViewBag.FilteredDoctors = service.FilteredDoctors ?? service.Doctors;
+            ViewBag.SpecializationData = service.Specializations.ToList();
+            ViewBag.Doctors = service.Doctors.ToList();
+            ViewBag.FilteredDoctors = (service.FilteredDoctors ?? service.Doctors.ToList()).ToList();
             return PartialView("Doctor/Doctors");
         }
 
         [HttpGet]
         public PartialViewResult Patients()
         {
-            ViewBag.FilteredPatients = service.Patients;
-            ViewBag.HospitalData = service.Hospitals;
-            ViewBag.Doctors = service.Doctors;
+            ViewBag.FilteredPatients = service.Patients.ToList();
+            ViewBag.HospitalData = service.Hospitals.ToList();
+            ViewBag.Doctors = service.Doctors.ToList();
             return PartialView("Patient/Patients");
         }
 
@@ -130,7 +132,7 @@ namespace AppointmentPlanner.Controllers
             activeData.WorkDays = activeData.WorkDays ?? new List<WorkDay>();
             ViewBag.GetSpecializationText = service.GetSpecializationText(activeData.Specialization);
             ViewBag.GetAvailability = service.GetAvailability(activeData);
-            ViewBag.SpecializationData = service.Specializations;
+            ViewBag.SpecializationData = service.Specializations.ToList();
             ViewBag.ExperienceData = service.Experience;
             ViewBag.DutyTimingsData = service.DutyTimings;
             ViewBag.ActiveData = activeData;
@@ -182,24 +184,31 @@ namespace AppointmentPlanner.Controllers
         }
 
         [HttpPost]
-        public IActionResult UpdateBreakHours([FromBody] List<WorkDay> workdays)
+        public async Task<IActionResult> UpdateBreakHours([FromBody] List<WorkDay> workdays)
         {
             service.ActiveDoctors.WorkDays = workdays;
-			return PartialView("Doctor/DoctorDetails", DoctorDetails(service.ActiveDoctors.Id.ToString()));
+            await _context.SaveChangesAsync();
+            return PartialView("Doctor/DoctorDetails", DoctorDetails(service.ActiveDoctors.Id.ToString()));
         }
 
         [HttpPost]
-        public PartialViewResult DeleteDoctorDetail([FromBody] Params param)
+        public async Task<PartialViewResult> DeleteDoctorDetail([FromBody] Params param)
         {
-			if (!string.IsNullOrEmpty(param.Value))
-			{
-				service.Doctors = service.Doctors.Where(item => item.Id.ToString() != param.Value.ToString()).ToList();
-			}
-			return PartialView("Doctor/DoctorDetails", DoctorDetails(service.Doctors.FirstOrDefault()?.Id.ToString()));
-		}
+            if (!string.IsNullOrEmpty(param.Value))
+            {
+                var doctor = await _context.Doctors.FindAsync(Convert.ToInt32(param.Value));
+                if (doctor != null)
+                {
+                    _context.Doctors.Remove(doctor);
+                    await _context.SaveChangesAsync();
+                }
+            }
+            var firstDoctor = await _context.Doctors.FirstOrDefaultAsync();
+            return PartialView("Doctor/DoctorDetails", DoctorDetails(firstDoctor?.Id.ToString()));
+        }
 
         [HttpPost]
-        public IActionResult UpdateCalendarDoctors([FromBody] Doctor doctor)
+        public async Task<IActionResult> UpdateCalendarDoctors([FromBody] Doctor doctor)
         {
             if (doctor != null)
             {
@@ -207,30 +216,30 @@ namespace AppointmentPlanner.Controllers
                 if (doctor.Id == 0)
                 {
                     dialogState = "new";
-                    doctor.Id = service.Doctors.Max(item => item.Id) + 1;
                     doctor.Text = "default";
                     doctor.Availability = "available";
                     doctor.Color = "#7575ff";
                     doctor.NewDoctorClass = "new-doctor";
-                    doctor.AvailableDays = service.Doctors[0].AvailableDays;
-                    doctor.WorkDays = service.Doctors[0].WorkDays;
                     UpdateWorkHours(doctor);
-                    service.Doctors.Add(doctor);
+                    _context.Doctors.Add(doctor);
+                    await _context.SaveChangesAsync();
                 }
                 else
                 {
                     UpdateWorkHours(doctor);
-                    service.ActiveDoctors = service.Doctors.First(x => x.Id == doctor.Id);
-                    service.ActiveDoctors.Name = doctor.Name;
-                    service.ActiveDoctors.Gender = doctor.Gender;
-                    service.ActiveDoctors.Mobile = doctor.Mobile;
-                    service.ActiveDoctors.Email = doctor.Email;
-                    service.ActiveDoctors.Specialization = doctor.Specialization;
-                    service.ActiveDoctors.Experience = doctor.Experience;
-                    service.ActiveDoctors.Education = doctor.Education;
-                    service.ActiveDoctors.Designation = doctor.Designation;
-                    service.ActiveDoctors.DutyTiming = doctor.DutyTiming;
-                    doctor = service.ActiveDoctors;
+                    var activeDoctor = await _context.Doctors.FindAsync(doctor.Id);
+                    activeDoctor.Name = doctor.Name;
+                    activeDoctor.Gender = doctor.Gender;
+                    activeDoctor.Mobile = doctor.Mobile;
+                    activeDoctor.Email = doctor.Email;
+                    activeDoctor.Specialization = doctor.Specialization;
+                    activeDoctor.Experience = doctor.Experience;
+                    activeDoctor.Education = doctor.Education;
+                    activeDoctor.Designation = doctor.Designation;
+                    activeDoctor.DutyTiming = doctor.DutyTiming;
+                    _context.Entry(activeDoctor).State = EntityState.Modified;
+                    await _context.SaveChangesAsync();
+                    service.ActiveDoctors = activeDoctor;
                 }
                 Activity activity = new()
                 {
@@ -240,11 +249,12 @@ namespace AppointmentPlanner.Controllers
                     Type = "doctor",
                     ActivityTime = DateTime.Now
                 };
-                service.Activities.Insert(0, activity);
+                _context.Activities.Add(activity);
+                await _context.SaveChangesAsync();
             }
-            if (service.FilteredDoctors != null && service.FilteredDoctors.Count != service.Doctors.Count)
+            if (service.FilteredDoctors != null && service.FilteredDoctors.Count != _context.Doctors.Count())
             {
-                service.FilteredDoctors = service.Doctors.Where(item => item.DepartmentId.Equals(service.FilteredDoctors.First().DepartmentId)).ToList();
+                service.FilteredDoctors = _context.Doctors.Where(item => item.DepartmentId.Equals(service.FilteredDoctors.First().DepartmentId)).ToList();
             }
             return Ok(doctor);
         }
@@ -275,115 +285,91 @@ namespace AppointmentPlanner.Controllers
                 data.StartHour = "12:00";
                 data.EndHour = "21:00";
             }
-            data.WorkDays.ForEach(x =>
+            if (data.WorkDays != null)
             {
-                x.WorkStartHour = x.WorkStartHour.HasValue ? x.WorkStartHour.Value.Date.Add(startValue) : x.WorkStartHour.Value;
-                x.WorkEndHour = x.WorkEndHour.HasValue ? x.WorkEndHour.Value.Date.Add(endValue) : x.WorkEndHour.Value;
-            });
-        }
-
-        [HttpPost]
-        public void UpdateWaitingListData([FromBody] string[] activeIds)
-        {
-            if (activeIds != null && activeIds.Count() > 0)
-            {
-                foreach (string ID in activeIds)
+                foreach (var x in data.WorkDays)
                 {
-                    service.WaitingLists = service.WaitingLists.Where(item => !ID.Contains(item.Id.ToString())).ToList();
-                    ViewBag.WaitingList = service.WaitingLists;
+                    x.WorkStartHour = x.WorkStartHour.HasValue ? x.WorkStartHour.Value.Date.Add(startValue) : x.WorkStartHour;
+                    x.WorkEndHour = x.WorkEndHour.HasValue ? x.WorkEndHour.Value.Date.Add(endValue) : x.WorkEndHour;
                 }
             }
         }
 
         [HttpPost]
-        public void UpdateActivityData([FromBody] Activity activityData)
+        public async Task UpdateWaitingListData([FromBody] string[] activeIds)
         {
-            if (activityData != null)
+            if (activeIds != null && activeIds.Count() > 0)
             {
-                activityData.ActivityTime = DateTime.Now; 
-                service.Activities.Insert(0, activityData);
+                foreach (string ID in activeIds)
+                {
+                    var item = await _context.WaitingLists.FindAsync(Convert.ToInt32(ID));
+                    if (item != null)
+                    {
+                        _context.WaitingLists.Remove(item);
+                    }
+                }
+                await _context.SaveChangesAsync();
             }
         }
 
         [HttpPost]
-        public void UpdateHospitalData([FromBody] EditParams param)
+        public async Task UpdateActivityData([FromBody] Activity activityData)
         {
-            if(param.added != null && param.added.Count() > 0)
+            if (activityData != null)
+            {
+                activityData.ActivityTime = DateTime.Now;
+                _context.Activities.Add(activityData);
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        [HttpPost]
+        public async Task UpdateHospitalData([FromBody] EditParams param)
+        {
+            if (param.added != null && param.added.Count() > 0)
             {
                 foreach (Hospital item in param.added)
                 {
-                    DateTime startTime = Convert.ToDateTime(item.StartTime);
-                    DateTime endTime = Convert.ToDateTime(item.EndTime);
-
-                    Hospital hospital = new()
-                    {
-                        Id = item.Id,
-                        Name = item.Name,
-                        StartTime = startTime,
-                        EndTime = endTime,
-                        Disease = item.Disease,
-                        DepartmentName = item.DepartmentName,
-                        DepartmentId = item.DepartmentId,
-                        DoctorId = item.DoctorId,
-                        PatientId = item.PatientId,
-                        RecurrenceRule = item.RecurrenceRule,
-                        Symptoms = item.Symptoms,
-                        IsAllDay = item.IsAllDay,
-                        ElementType = item.ElementType,
-                        IsBlock = item.IsBlock,
-                        RecurrenceID = item.RecurrenceID,
-                        RecurrenceException = item.RecurrenceException
-                    };
-                    service.Hospitals.Add(hospital);
+                    _context.Hospitals.Add(item);
                 }
             }
             if (param.changed != null && param.changed.Count() > 0)
             {
                 foreach (Hospital item in param.changed)
                 {
-                    DateTime startTime = Convert.ToDateTime(item.StartTime);
-                    DateTime endTime = Convert.ToDateTime(item.EndTime);
-
-                    Hospital hospital = service.Hospitals.Single(hospitalItem => hospitalItem.Id == item.Id);
-
-                    hospital.Name = item.Name;
-                    hospital.StartTime = startTime;
-                    hospital.EndTime = endTime;
-                    hospital.Disease = item.Disease;
-                    hospital.DepartmentName = item.DepartmentName;
-                    hospital.DepartmentId = item.DepartmentId;
-                    hospital.DoctorId = item.DoctorId;
-                    hospital.PatientId = item.PatientId;
-                    hospital.RecurrenceRule = item.RecurrenceRule;
-                    hospital.Symptoms = item.Symptoms;
-                    hospital.IsAllDay = item.IsAllDay;
-                    hospital.ElementType = item.ElementType;
-                    hospital.IsBlock = item.IsBlock;
-                    hospital.RecurrenceID = item.RecurrenceID;
-                    hospital.RecurrenceException = item.RecurrenceException;
+                    _context.Entry(item).State = EntityState.Modified;
                 }
             }
             if (param.deleted != null && param.deleted.Count() > 0)
             {
                 foreach (Hospital item in param.deleted)
                 {
-                    Hospital hospital = service.Hospitals.Single(hospitalItem => hospitalItem.Id == item.Id);
-                    service.Hospitals.Remove(hospital);
+                    var hospital = await _context.Hospitals.FindAsync(item.Id);
+                    if (hospital != null)
+                    {
+                        _context.Hospitals.Remove(hospital);
+                    }
+                }
+            }
+            await _context.SaveChangesAsync();
+        }
+
+        [HttpPost]
+        public async Task UpdatePatients([FromBody] Params param)
+        {
+            if (!string.IsNullOrEmpty(param.Value))
+            {
+                var patient = await _context.Patients.FindAsync(Convert.ToInt32(param.Value));
+                if (patient != null)
+                {
+                    _context.Patients.Remove(patient);
+                    await _context.SaveChangesAsync();
                 }
             }
         }
 
         [HttpPost]
-        public void UpdatePatients([FromBody] Params param)
-        {
-            if (!string.IsNullOrEmpty(param.Value))
-            {
-                service.Patients = service.Patients.Where(item => item.Id.ToString() != param.Value.ToString()).ToList();
-            }
-        }
-
-        [HttpPost]
-        public IActionResult UpdatePatientData([FromBody] Patient patient)
+        public async Task<IActionResult> UpdatePatientData([FromBody] Patient patient)
         {
             if (patient != null)
             {
@@ -391,20 +377,14 @@ namespace AppointmentPlanner.Controllers
                 if (patient.Id == 0)
                 {
                     dialogState = "new";
-                    patient.Id = service.Patients.Max(item => item.Id) + 1;
-                    service.Patients.Add(patient);
+                    _context.Patients.Add(patient);
+                    await _context.SaveChangesAsync();
                 }
                 else
                 {
-                    service.ActivePatients = service.Patients.First(x => x.Id == patient.Id);
-                    service.ActivePatients.Name = patient.Name;
-                    service.ActivePatients.Gender = patient.Gender;
-                    service.ActivePatients.DOB = patient.DOB;
-                    service.ActivePatients.BloodGroup = patient.BloodGroup;
-                    service.ActivePatients.Mobile = patient.Mobile;
-                    service.ActivePatients.Email = patient.Email;
-                    service.ActivePatients.Symptoms = patient.Symptoms;
-                    patient = service.ActivePatients;
+                    _context.Entry(patient).State = EntityState.Modified;
+                    await _context.SaveChangesAsync();
+                    service.ActivePatients = patient;
                 }
                 Activity activity = new()
                 {
@@ -414,36 +394,11 @@ namespace AppointmentPlanner.Controllers
                     Type = "patient",
                     ActivityTime = DateTime.Now
                 };
-                service.Activities.Insert(0, activity);
+                _context.Activities.Add(activity);
+                await _context.SaveChangesAsync();
             }
             return Ok(patient);
         }
 
-        [HttpPost]
-        public IActionResult ResetService()
-        {
-            var plannerService = new AppointmentService();
-            service.Activities = plannerService.Activities;
-            service.StartDate = plannerService.StartDate;
-            service.ActiveDoctors = plannerService.ActiveDoctors;
-            service.ActivePatients = plannerService.ActivePatients;
-            service.StartHours = plannerService.StartHours;
-            service.EndHours = plannerService.EndHours;
-            service.Views = plannerService.Views;
-            service.ColorCategory = plannerService.ColorCategory;
-            service.BloodGroups = plannerService.BloodGroups;
-            service.DayOfWeekList = plannerService.DayOfWeekList;
-            service.TimeSlot = plannerService.TimeSlot;
-            service.Hospitals = plannerService.Hospitals;
-            service.Patients = plannerService.Patients;
-            service.Doctors = plannerService.Doctors;
-            service.FilteredDoctors = plannerService.FilteredDoctors;
-            service.WaitingLists = plannerService.WaitingLists;
-            service.Specializations = plannerService.Specializations;
-            service.DutyTimings = plannerService.DutyTimings;
-            service.Experience = plannerService.Experience;
-            service.CalendarSettings = plannerService.CalendarSettings;
-            return Ok();
-        }
     }
 }

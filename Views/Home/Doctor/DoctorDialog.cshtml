@@ -2,7 +2,7 @@
 @inject AppointmentService service
 
 @{
-    List<Specialization> specializationData = service.Specializations;
+    List<Specialization> specializationData = service.Specializations.ToList();
     List<TextIdData> experienceData = service.Experience;
     List<TextIdData> dutyTimingsData = service.DutyTimings;
 }

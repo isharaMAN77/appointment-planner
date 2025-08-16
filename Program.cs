@@ -1,6 +1,5 @@
 using AppointmentPlanner.Models;
 using AppointmentPlanner.DataAccess;
-using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,9 +8,12 @@ builder.Services.AddControllersWithViews().AddJsonOptions(options => {
     options.JsonSerializerOptions.PropertyNamingPolicy = null;
 });
 
-builder.Services.AddDbContext<AppointmentContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
+builder.Services.AddSingleton<DatabaseHelper>(sp =>
+{
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    var connectionString = configuration.GetConnectionString("DefaultConnection");
+    return new DatabaseHelper(connectionString);
+});
 builder.Services.AddScoped<AppointmentService>();
 
 var app = builder.Build();

@@ -1,19 +1,23 @@
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
 using System.Globalization;
+using System.Linq;
 using AppointmentPlanner.DataAccess;
-using Microsoft.EntityFrameworkCore;
 
 namespace AppointmentPlanner.Models
 {
     public class AppointmentService
     {
-        private readonly AppointmentContext _context;
+        private readonly DatabaseHelper _dbHelper;
 
-        public AppointmentService(AppointmentContext context)
+        public AppointmentService(DatabaseHelper dbHelper)
         {
-            _context = context;
+            _dbHelper = dbHelper;
             StartDate = new DateTime(2020, 2, 5, 0, 0, 0, 0);
-            ActiveDoctors = _context.Doctors.FirstOrDefault();
-            ActivePatients = _context.Patients.FirstOrDefault();
+            ActiveDoctors = Doctors.FirstOrDefault();
+            ActivePatients = Patients.FirstOrDefault();
             StartHours = DataProvider.GetStartHours();
             EndHours = DataProvider.GetEndHours();
             Views = DataProvider.GetViews();
@@ -35,15 +39,15 @@ namespace AppointmentPlanner.Models
         public List<TextValueData> BloodGroups { get; set; }
         public List<TextValueNumericData> DayOfWeekList { get; set; }
         public List<TextValueNumericData> TimeSlot { get; set; }
-        public IQueryable<Hospital> Hospitals => _context.Hospitals;
-        public IQueryable<Patient> Patients => _context.Patients;
-        public IQueryable<Doctor> Doctors => _context.Doctors;
+        public List<Hospital> Hospitals => DataTableHelper.ToList<Hospital>(_dbHelper.ExecuteQuery(DataProvider.GetHospitalsQuery()));
+        public List<Patient> Patients => DataTableHelper.ToList<Patient>(_dbHelper.ExecuteQuery(DataProvider.GetPatientsQuery()));
+        public List<Doctor> Doctors => DataTableHelper.ToList<Doctor>(_dbHelper.ExecuteQuery(DataProvider.GetDoctorsQuery()));
         public List<Doctor> FilteredDoctors { get; set; }
-        public IQueryable<WaitingList> WaitingLists => _context.WaitingLists;
-        public IQueryable<Specialization> Specializations => _context.Specializations;
+        public List<WaitingList> WaitingLists => DataTableHelper.ToList<WaitingList>(_dbHelper.ExecuteQuery(DataProvider.GetWaitingListsQuery()));
+        public List<Specialization> Specializations => DataTableHelper.ToList<Specialization>(_dbHelper.ExecuteQuery(DataProvider.GetSpecializationsQuery()));
         public List<TextIdData> DutyTimings { get; set; }
         public List<TextIdData> Experience { get; set; }
-        public IQueryable<Activity> Activities => _context.Activities;
+        public List<Activity> Activities => DataTableHelper.ToList<Activity>(_dbHelper.ExecuteQuery(DataProvider.GetActivitiesQuery()));
         public CalendarSetting CalendarSettings { get; set; }
 
         public DateTime GetWeekFirstDate(DateTime date)
@@ -83,12 +87,20 @@ namespace AppointmentPlanner.Models
 
         public Doctor GetDoctorDetails(int id)
         {
-            return _context.Doctors.Include(d => d.WorkDays).FirstOrDefault(i => i.Id.Equals(id));
+            var parameter = new SqlParameter("@Id", id);
+            var doctor = DataTableHelper.ToList<Doctor>(_dbHelper.ExecuteQuery(DataProvider.GetDoctorByIdQuery(), new[] { parameter })).FirstOrDefault();
+            if (doctor != null)
+            {
+                var workDaysParameter = new SqlParameter("@DoctorId", doctor.Id);
+                doctor.WorkDays = DataTableHelper.ToList<WorkDay>(_dbHelper.ExecuteQuery(DataProvider.GetWorkDaysByDoctorIdQuery(), new[] { workDaysParameter }));
+            }
+            return doctor;
         }
 
         public string GetSpecializationText(string text)
         {
-            return _context.Specializations.FirstOrDefault(item => item.Id.Equals(text)).Text;
+            var parameter = new SqlParameter("@Id", text);
+            return DataTableHelper.ToList<Specialization>(_dbHelper.ExecuteQuery(DataProvider.GetSpecializationByIdQuery(), new[] { parameter })).FirstOrDefault()?.Text;
         }
         public string GetAvailability(Doctor doctor)
         {
@@ -104,7 +116,12 @@ namespace AppointmentPlanner.Models
 
         public List<Hospital> GetFilteredData(DateTime StartDate, DateTime EndDate)
         {
-            return _context.Hospitals.Where(hospital => hospital.StartTime >= StartDate && hospital.EndTime <= EndDate).ToList();
+            var parameters = new[]
+            {
+                new SqlParameter("@StartTime", StartDate),
+                new SqlParameter("@EndTime", EndDate)
+            };
+            return DataTableHelper.ToList<Hospital>(_dbHelper.ExecuteQuery(DataProvider.GetFilteredHospitalsQuery(), parameters));
         }
 
         public ChartData GetChartData(List<Hospital> hospitals, DateTime startDate)
@@ -159,11 +176,12 @@ namespace AppointmentPlanner.Models
         {
             if (!string.IsNullOrEmpty(param.Value))
             {
-                FilteredDoctors = _context.Doctors.Where(item => item.DepartmentId.Equals(Convert.ToInt32(param.Value))).ToList();
+                var parameter = new SqlParameter("@DepartmentId", Convert.ToInt32(param.Value));
+                FilteredDoctors = DataTableHelper.ToList<Doctor>(_dbHelper.ExecuteQuery(DataProvider.GetFilteredDoctorsQuery(), new[] { parameter }));
             }
             else
             {
-                FilteredDoctors = _context.Doctors.ToList();
+                FilteredDoctors = Doctors;
             }
         }
     }

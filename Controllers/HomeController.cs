@@ -1,21 +1,21 @@
 ﻿using AppointmentPlanner.DataAccess;
 using AppointmentPlanner.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Linq;
 using Syncfusion.EJ2.Schedule;
+using System.Data.SqlClient;
 
 namespace AppointmentPlanner.Controllers
 {
     public class HomeController : Controller
     {
         private readonly AppointmentService service;
-        private readonly AppointmentContext _context;
+        private readonly DatabaseHelper _dbHelper;
 
-        public HomeController(AppointmentService appointmentService, AppointmentContext context)
+        public HomeController(AppointmentService appointmentService, IConfiguration configuration)
         {
             service = appointmentService;
-            _context = context;
+            _dbHelper = new DatabaseHelper(configuration.GetConnectionString("DefaultConnection"));
         }
 
         public IActionResult Index()
@@ -65,7 +65,7 @@ namespace AppointmentPlanner.Controllers
             ViewBag.SelectedDate = service.StartDate;
             ViewBag.StartHour = service.CalendarSettings.Calendar.Start;
             ViewBag.EndHour = service.CalendarSettings.Calendar.End;
-            ViewBag.WorkDays = new int[] { 0, 1, 2, 3, 4, 5, 6};
+            ViewBag.WorkDays = new int[] { 0, 1, 2, 3, 4, 5, 6 };
             ViewBag.CurrentView = (View)Enum.Parse(typeof(View), service.CalendarSettings.CurrentView);
             ViewBag.FirstDayOfWeek = service.CalendarSettings.FirstDayOfWeek;
             ViewBag.EventData = service.Hospitals.ToList();
@@ -186,31 +186,43 @@ namespace AppointmentPlanner.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> UpdateBreakHours([FromBody] List<WorkDay> workdays)
+        public IActionResult UpdateBreakHours([FromBody] List<WorkDay> workdays)
         {
             service.ActiveDoctors.WorkDays = workdays;
-            await _context.SaveChangesAsync();
+            foreach (var workday in workdays)
+            {
+                var parameters = new[]
+                {
+                    new SqlParameter("@Day", workday.Day),
+                    new SqlParameter("@Index", workday.Index),
+                    new SqlParameter("@Enable", workday.Enable),
+                    new SqlParameter("@WorkStartHour", workday.WorkStartHour),
+                    new SqlParameter("@WorkEndHour", workday.WorkEndHour),
+                    new SqlParameter("@BreakStartHour", workday.BreakStartHour),
+                    new SqlParameter("@BreakEndHour", workday.BreakEndHour),
+                    new SqlParameter("@State", workday.State),
+                    new SqlParameter("@DoctorId", workday.DoctorId),
+                    new SqlParameter("@Id", workday.Id)
+                };
+                _dbHelper.ExecuteNonQuery(DataProvider.UpdateWorkDayQuery(), parameters);
+            }
             return PartialView("Doctor/DoctorDetails", DoctorDetails(service.ActiveDoctors.Id.ToString()));
         }
 
         [HttpPost]
-        public async Task<PartialViewResult> DeleteDoctorDetail([FromBody] Params param)
+        public PartialViewResult DeleteDoctorDetail([FromBody] Params param)
         {
             if (!string.IsNullOrEmpty(param.Value))
             {
-                var doctor = await _context.Doctors.FindAsync(Convert.ToInt32(param.Value));
-                if (doctor != null)
-                {
-                    _context.Doctors.Remove(doctor);
-                    await _context.SaveChangesAsync();
-                }
+                var parameter = new SqlParameter("@Id", Convert.ToInt32(param.Value));
+                _dbHelper.ExecuteNonQuery(DataProvider.DeleteDoctorQuery(), new[] { parameter });
             }
-            var firstDoctor = await _context.Doctors.FirstOrDefaultAsync();
+            var firstDoctor = service.Doctors.FirstOrDefault();
             return PartialView("Doctor/DoctorDetails", DoctorDetails(firstDoctor?.Id.ToString()));
         }
 
         [HttpPost]
-        public async Task<IActionResult> UpdateCalendarDoctors([FromBody] Doctor doctor)
+        public IActionResult UpdateCalendarDoctors([FromBody] Doctor doctor)
         {
             if (doctor != null)
             {
@@ -223,25 +235,45 @@ namespace AppointmentPlanner.Controllers
                     doctor.Color = "#7575ff";
                     doctor.NewDoctorClass = "new-doctor";
                     UpdateWorkHours(doctor);
-                    _context.Doctors.Add(doctor);
-                    await _context.SaveChangesAsync();
+                    var parameters = new[]
+                    {
+                        new SqlParameter("@Name", doctor.Name),
+                        new SqlParameter("@Gender", doctor.Gender),
+                        new SqlParameter("@Text", doctor.Text),
+                        new SqlParameter("@DepartmentId", doctor.DepartmentId),
+                        new SqlParameter("@Color", doctor.Color),
+                        new SqlParameter("@Education", doctor.Education),
+                        new SqlParameter("@Specialization", doctor.Specialization),
+                        new SqlParameter("@Experience", doctor.Experience),
+                        new SqlParameter("@Designation", doctor.Designation),
+                        new SqlParameter("@DutyTiming", doctor.DutyTiming),
+                        new SqlParameter("@Email", doctor.Email),
+                        new SqlParameter("@Mobile", doctor.Mobile),
+                        new SqlParameter("@Availability", doctor.Availability),
+                        new SqlParameter("@StartHour", doctor.StartHour),
+                        new SqlParameter("@EndHour", doctor.EndHour),
+                        new SqlParameter("@NewDoctorClass", doctor.NewDoctorClass)
+                    };
+                    _dbHelper.ExecuteNonQuery(DataProvider.InsertDoctorQuery(), parameters);
                 }
                 else
                 {
                     UpdateWorkHours(doctor);
-                    var activeDoctor = await _context.Doctors.FindAsync(doctor.Id);
-                    activeDoctor.Name = doctor.Name;
-                    activeDoctor.Gender = doctor.Gender;
-                    activeDoctor.Mobile = doctor.Mobile;
-                    activeDoctor.Email = doctor.Email;
-                    activeDoctor.Specialization = doctor.Specialization;
-                    activeDoctor.Experience = doctor.Experience;
-                    activeDoctor.Education = doctor.Education;
-                    activeDoctor.Designation = doctor.Designation;
-                    activeDoctor.DutyTiming = doctor.DutyTiming;
-                    _context.Entry(activeDoctor).State = EntityState.Modified;
-                    await _context.SaveChangesAsync();
-                    service.ActiveDoctors = activeDoctor;
+                    var parameters = new[]
+                    {
+                        new SqlParameter("@Name", doctor.Name),
+                        new SqlParameter("@Gender", doctor.Gender),
+                        new SqlParameter("@Mobile", doctor.Mobile),
+                        new SqlParameter("@Email", doctor.Email),
+                        new SqlParameter("@Specialization", doctor.Specialization),
+                        new SqlParameter("@Experience", doctor.Experience),
+                        new SqlParameter("@Education", doctor.Education),
+                        new SqlParameter("@Designation", doctor.Designation),
+                        new SqlParameter("@DutyTiming", doctor.DutyTiming),
+                        new SqlParameter("@Id", doctor.Id)
+                    };
+                    _dbHelper.ExecuteNonQuery(DataProvider.UpdateDoctorQuery(), parameters);
+                    service.ActiveDoctors = doctor;
                 }
                 Activity activity = new()
                 {
@@ -251,12 +283,19 @@ namespace AppointmentPlanner.Controllers
                     Type = "doctor",
                     ActivityTime = DateTime.Now
                 };
-                _context.Activities.Add(activity);
-                await _context.SaveChangesAsync();
+                var activityParameters = new[]
+                {
+                    new SqlParameter("@Name", activity.Name),
+                    new SqlParameter("@Message", activity.Message),
+                    new SqlParameter("@Time", activity.Time),
+                    new SqlParameter("@Type", activity.Type),
+                    new SqlParameter("@ActivityTime", activity.ActivityTime)
+                };
+                _dbHelper.ExecuteNonQuery(DataProvider.InsertActivityQuery(), activityParameters);
             }
-            if (service.FilteredDoctors != null && service.FilteredDoctors.Count != _context.Doctors.Count())
+            if (service.FilteredDoctors != null && service.FilteredDoctors.Count != service.Doctors.Count())
             {
-                service.FilteredDoctors = _context.Doctors.Where(item => item.DepartmentId.Equals(service.FilteredDoctors.First().DepartmentId)).ToList();
+                service.FilteredDoctors = service.Doctors.Where(item => item.DepartmentId.Equals(service.FilteredDoctors.First().DepartmentId)).ToList();
             }
             return Ok(doctor);
         }
@@ -268,8 +307,8 @@ namespace AppointmentPlanner.Controllers
             TimeSpan endValue;
             if (dutyString == "10:00 AM - 7:00 PM")
             {
-                startValue = new TimeSpan (10, 0, 0);
-                endValue = new TimeSpan (19, 0, 0);
+                startValue = new TimeSpan(10, 0, 0);
+                endValue = new TimeSpan(19, 0, 0);
                 data.StartHour = "10:00";
                 data.EndHour = "19:00";
             }
@@ -298,80 +337,102 @@ namespace AppointmentPlanner.Controllers
         }
 
         [HttpPost]
-        public async Task UpdateWaitingListData([FromBody] string[] activeIds)
+        public void UpdateWaitingListData([FromBody] string[] activeIds)
         {
             if (activeIds != null && activeIds.Count() > 0)
             {
                 foreach (string ID in activeIds)
                 {
-                    var item = await _context.WaitingLists.FindAsync(Convert.ToInt32(ID));
-                    if (item != null)
-                    {
-                        _context.WaitingLists.Remove(item);
-                    }
+                    var parameter = new SqlParameter("@Id", Convert.ToInt32(ID));
+                    _dbHelper.ExecuteNonQuery(DataProvider.DeleteWaitingListQuery(), new[] { parameter });
                 }
-                await _context.SaveChangesAsync();
             }
         }
 
         [HttpPost]
-        public async Task UpdateActivityData([FromBody] Activity activityData)
+        public void UpdateActivityData([FromBody] Activity activityData)
         {
             if (activityData != null)
             {
                 activityData.ActivityTime = DateTime.Now;
-                _context.Activities.Add(activityData);
-                await _context.SaveChangesAsync();
+                var parameters = new[]
+                {
+                    new SqlParameter("@Name", activityData.Name),
+                    new SqlParameter("@Message", activityData.Message),
+                    new SqlParameter("@Time", activityData.Time),
+                    new SqlParameter("@Type", activityData.Type),
+                    new SqlParameter("@ActivityTime", activityData.ActivityTime)
+                };
+                _dbHelper.ExecuteNonQuery(DataProvider.InsertActivityQuery(), parameters);
             }
         }
 
         [HttpPost]
-        public async Task UpdateHospitalData([FromBody] EditParams param)
+        public void UpdateHospitalData([FromBody] EditParams param)
         {
             if (param.added != null && param.added.Count() > 0)
             {
                 foreach (Hospital item in param.added)
                 {
-                    _context.Hospitals.Add(item);
+                    var parameters = new[]
+                    {
+                        new SqlParameter("@Name", item.Name),
+                        new SqlParameter("@StartTime", item.StartTime),
+                        new SqlParameter("@EndTime", item.EndTime),
+                        new SqlParameter("@Disease", item.Disease),
+                        new SqlParameter("@DepartmentName", item.DepartmentName),
+                        new SqlParameter("@DepartmentId", item.DepartmentId),
+                        new SqlParameter("@DoctorId", item.DoctorId),
+                        new SqlParameter("@PatientId", item.PatientId),
+                        new SqlParameter("@Symptoms", item.Symptoms),
+                        new SqlParameter("@IsBlock", item.IsBlock)
+                    };
+                    _dbHelper.ExecuteNonQuery(DataProvider.InsertHospitalQuery(), parameters);
                 }
             }
             if (param.changed != null && param.changed.Count() > 0)
             {
                 foreach (Hospital item in param.changed)
                 {
-                    _context.Entry(item).State = EntityState.Modified;
+                    var parameters = new[]
+                    {
+                        new SqlParameter("@Name", item.Name),
+                        new SqlParameter("@StartTime", item.StartTime),
+                        new SqlParameter("@EndTime", item.EndTime),
+                        new SqlParameter("@Disease", item.Disease),
+                        new SqlParameter("@DepartmentName", item.DepartmentName),
+                        new SqlParameter("@DepartmentId", item.DepartmentId),
+                        new SqlParameter("@DoctorId", item.DoctorId),
+                        new SqlParameter("@PatientId", item.PatientId),
+                        new SqlParameter("@Symptoms", item.Symptoms),
+                        new SqlParameter("@IsBlock", item.IsBlock),
+                        new SqlParameter("@Id", item.Id)
+                    };
+                    _dbHelper.ExecuteNonQuery(DataProvider.UpdateHospitalQuery(), parameters);
                 }
             }
             if (param.deleted != null && param.deleted.Count() > 0)
             {
                 foreach (Hospital item in param.deleted)
                 {
-                    var hospital = await _context.Hospitals.FindAsync(item.Id);
-                    if (hospital != null)
-                    {
-                        _context.Hospitals.Remove(hospital);
-                    }
+                    var parameter = new SqlParameter("@Id", item.Id);
+                    _dbHelper.ExecuteNonQuery(DataProvider.DeleteHospitalQuery(), new[] { parameter });
                 }
             }
-            await _context.SaveChangesAsync();
         }
 
         [HttpPost]
-        public async Task UpdatePatients([FromBody] Params param)
+        public void UpdatePatients([FromBody] Params param)
         {
             if (!string.IsNullOrEmpty(param.Value))
             {
-                var patient = await _context.Patients.FindAsync(Convert.ToInt32(param.Value));
-                if (patient != null)
-                {
-                    _context.Patients.Remove(patient);
-                    await _context.SaveChangesAsync();
-                }
+                var parameter = new SqlParameter("@Id", Convert.ToInt32(param.Value));
+                _dbHelper.ExecuteNonQuery(DataProvider.DeletePatientQuery(), new[] { parameter });
             }
         }
 
         [HttpPost]
-        public async Task<IActionResult> UpdatePatientData([FromBody] Patient patient)
+        public IActionResult UpdatePatientData([FromBody] Patient patient)
         {
             if (patient != null)
             {
@@ -379,13 +440,40 @@ namespace AppointmentPlanner.Controllers
                 if (patient.Id == 0)
                 {
                     dialogState = "new";
-                    _context.Patients.Add(patient);
-                    await _context.SaveChangesAsync();
+                    var parameters = new[]
+                    {
+                        new SqlParameter("@Name", patient.Name),
+                        new SqlParameter("@Text", patient.Text),
+                        new SqlParameter("@DOB", patient.DOB),
+                        new SqlParameter("@Mobile", patient.Mobile),
+                        new SqlParameter("@Email", patient.Email),
+                        new SqlParameter("@Address", patient.Address),
+                        new SqlParameter("@Disease", patient.Disease),
+                        new SqlParameter("@DepartmentName", patient.DepartmentName),
+                        new SqlParameter("@BloodGroup", patient.BloodGroup),
+                        new SqlParameter("@Gender", patient.Gender),
+                        new SqlParameter("@Symptoms", patient.Symptoms)
+                    };
+                    _dbHelper.ExecuteNonQuery(DataProvider.InsertPatientQuery(), parameters);
                 }
                 else
                 {
-                    _context.Entry(patient).State = EntityState.Modified;
-                    await _context.SaveChangesAsync();
+                    var parameters = new[]
+                    {
+                        new SqlParameter("@Name", patient.Name),
+                        new SqlParameter("@Text", patient.Text),
+                        new SqlParameter("@DOB", patient.DOB),
+                        new SqlParameter("@Mobile", patient.Mobile),
+                        new SqlParameter("@Email", patient.Email),
+                        new SqlParameter("@Address", patient.Address),
+                        new SqlParameter("@Disease", patient.Disease),
+                        new SqlParameter("@DepartmentName", patient.DepartmentName),
+                        new SqlParameter("@BloodGroup", patient.BloodGroup),
+                        new SqlParameter("@Gender", patient.Gender),
+                        new SqlParameter("@Symptoms", patient.Symptoms),
+                        new SqlParameter("@Id", patient.Id)
+                    };
+                    _dbHelper.ExecuteNonQuery(DataProvider.UpdatePatientQuery(), parameters);
                     service.ActivePatients = patient;
                 }
                 Activity activity = new()
@@ -396,8 +484,15 @@ namespace AppointmentPlanner.Controllers
                     Type = "patient",
                     ActivityTime = DateTime.Now
                 };
-                _context.Activities.Add(activity);
-                await _context.SaveChangesAsync();
+                var activityParameters = new[]
+                {
+                    new SqlParameter("@Name", activity.Name),
+                    new SqlParameter("@Message", activity.Message),
+                    new SqlParameter("@Time", activity.Time),
+                    new SqlParameter("@Type", activity.Type),
+                    new SqlParameter("@ActivityTime", activity.ActivityTime)
+                };
+                _dbHelper.ExecuteNonQuery(DataProvider.InsertActivityQuery(), activityParameters);
             }
             return Ok(patient);
         }

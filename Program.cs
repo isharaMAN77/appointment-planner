@@ -1,4 +1,6 @@
 using AppointmentPlanner.Models;
+using AppointmentPlanner.DataAccess;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,7 +9,10 @@ builder.Services.AddControllersWithViews().AddJsonOptions(options => {
     options.JsonSerializerOptions.PropertyNamingPolicy = null;
 });
 
-builder.Services.AddSingleton<AppointmentService>();
+builder.Services.AddDbContext<AppointmentContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddScoped<AppointmentService>();
 
 var app = builder.Build();
 //Register Syncfusion license

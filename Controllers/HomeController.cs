@@ -1,5 +1,7 @@
-﻿using AppointmentPlanner.Models;
+﻿using AppointmentPlanner.DataAccess;
+using AppointmentPlanner.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Linq;
 using Syncfusion.EJ2.Schedule;
 

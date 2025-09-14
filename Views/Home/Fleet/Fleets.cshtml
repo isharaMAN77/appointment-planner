@@ -1,0 +1,348 @@
+@using Syncfusion.EJ2
+
+@{
+    ViewBag.Title = "Fleets";
+    var template = "<span class='fleet-name'>${Registration}</span>";
+    var editSettingsTemplate = "<div class='grid-edit-dialog'>" +
+                        "<div class='field-row'>" +
+                            "<label> Fleet Id </label><span id='ID'>${ID}</span>" +
+                        "</div>" +
+                        "<div class='field-row'>" +
+                            "<label> Registration Number </label><span id='Registration'>${Registration}</span>" +
+                        "</div>" +
+                        "<div class='field-row'>" +
+                            "<label> Make </label><span id='Make'>${Make}</span>" +
+                        "</div>" +
+                        "<div class='field-row'>" +
+                            "<label> Model </label><span id='Model'>${Model}</span>" +
+                        "</div>" +
+                        "<div class='field-row'>" +
+                            "<label> Year </label><span id='Year'>${Year}</span>" +
+                        "</div>" +
+                        "<div class='field-row'>" +
+                            "<label> Rented </label><span id='Rented'>${Rented}</span>" +
+                        "</div>" +
+                        "<div class='field-row'>" +
+                            "<label> Depot </label><span id='Depot'>${Name}</span>" +
+                        "</div>" +                        
+                    "</div>";
+}
+
+<div id="patient-wrapper" class="planner-patient-wrapper">
+    <header>
+        <div class="module-title">
+            <div class="title">FLEET LIST</div>
+            <div class="underline"></div>
+        </div>
+        <div class="add-fleet">
+            <div class="e-icon-add e-icons"></div>
+            <div class="add-patient-label">Add New</div>
+        </div>
+    </header>
+    <div class="patients-detail-wrapper">
+        <div class="patient-operations">
+            <div id="searchTemplate" class="search-wrapper planner-patient-search">
+                <div class="e-input-group" role="search">
+                    <input id="schedule_searchbar" class="e-input" name="input" type="search" placeholder="Search Patient" />
+                    <span class="e-clear-icon" aria-label="close" role="button"></span>
+                    <span id="schedule_searchbutton" class="e-input-group-icon search-icon e-icons" tabindex="-1" title="Search" aria-label="search"></span>
+                </div>
+            </div>
+            <ejs-button id="addfleet" cssClass="e-normal add-details" isPrimary="true" content="New Vehicle"></ejs-button>
+        </div>
+        <div class="patient-display">
+            <ejs-grid id="fleetsGrid" dataSource="@ViewBag.Fleets" actionComplete="onDataEdit" rowDataBound="gridRowDataBound">
+                <e-grid-editsettings allowEditing="true" allowAdding="true" allowDeleting="true" mode="Dialog" template="@editSettingsTemplate"></e-grid-editsettings>
+                <e-grid-columns>
+                    <e-grid-column field="ID" width="50" headerText="ID" textAlign="Left" isPrimaryKey="true"></e-grid-column>
+                    <e-grid-column field="Registration" width="100" textAlign="Left" template="@template"></e-grid-column>
+                    <e-grid-column field="Make" width="80" textAlign="Left"></e-grid-column>
+                    <e-grid-column field="Model" headerText="Model" width="100" textAlign="Left"></e-grid-column>
+                    <e-grid-column field="Year" headerText="Year" width="150" textAlign="Left"></e-grid-column>
+                    <e-grid-column field="Rented" headerText="Rented" width="100" textAlign="Left"></e-grid-column>
+                    <e-grid-column field="DepotID" headerText="Depot" foreignKeyField="ID" foreignKeyValue="Name" dataSource="@ViewBag.Depots" width="120" textAlign="Left"></e-grid-column>
+                </e-grid-columns>
+            </ejs-grid>
+        </div>
+    </div>
+</div>
+<partial name="/Views/Home/Fleet/FleetDialog.cshtml" /> 
+<script type="text/javascript">
+    function getColor(data) {
+        return 'background-color:' + data.color + ';';
+    }
+    document.querySelector('.add-fleet').onclick = onAddFleet;
+    document.querySelector('#addfleet').onclick = onAddFleet;
+    var activeFleetData;
+
+    function gridRowDataBound(args) {
+        if (args.row) {
+            args.row.querySelector('.fleet-name').onclick = onPatientClick;
+        }
+    }
+
+    function onPatientClick(args) {
+        var rowIndex = args.currentTarget.parentElement.getAttribute('index');
+        setTimeout(() => {
+            var gridObj = document.querySelector('#fleetsGrid').ej2_instances[0];
+            gridObj.selectRow(parseInt(rowIndex, 10));
+            gridObj.startEdit();
+        });
+    }
+     function onDataEdit(args) {
+        var intl = new ej.base.Internationalization();
+        var depotData = @Html.Raw(Json.Serialize(ViewBag.Depots));
+        if (args.requestType === 'beginEdit') {
+            activePatientData = args.rowData;
+            var gridDialog = args.dialog;
+            gridDialog.header = 'Fleet Details';
+            var fields = ['ID', 'Registration', 'Make', 'Model', 'Year', 'Rented', 'Depot'];
+            fields.forEach(field => {
+                var value;
+                if (field === 'Year' && !ej.base.isNullOrUndefined(activePatientData[field])) {
+                    value = intl.formatDate(activePatientData[field], { skeleton: 'y' }).toString();
+                } 
+                else if (field === 'Rented')   {
+                    if (activePatientData[field].toString()=='true') {
+                        value='Yes';
+                    } else {
+                        value='No';
+                    }
+                }
+                else if (field === 'Depot')   {
+                    var filteredData = depotData.filter(item => item.ID === activePatientData.DepotID);
+                    value= filteredData[0].Name ;
+                }
+                else {
+                    value = ej.base.isNullOrUndefined(activePatientData[field]) ? '' : activePatientData[field].toString();
+                }
+                args.dialog.element.querySelector('#' + field).innerHTML = value;
+            });
+            var editButtonElement = ej.base.createElement('button', {
+                className: 'edit-patient',
+                id: 'edit',
+                innerHTML: 'Edit',
+                attrs: { type: 'button', title: 'Edit' }
+            });
+            editButtonElement.onclick = function (e) { onEditPatient(args); };
+            var deleteButtonElement = ej.base.createElement('button', {
+                className: 'delete-patient',
+                id: 'delete',
+                innerHTML: 'Delete',
+                attrs: { type: 'button', title: 'Delete', content: 'DELETE' }
+            });
+            deleteButtonElement.onclick = onDeletePatient;
+            gridDialog.element.querySelector('.e-footer-content').appendChild(deleteButtonElement);
+            gridDialog.element.querySelector('.e-footer-content').appendChild(editButtonElement);
+            var editButton = new ej.buttons.Button({ isPrimary: true });
+            editButton.appendTo('#edit');
+            var deleteButton = new ej.buttons.Button();
+            deleteButton.appendTo('#delete');
+        }
+    }
+    function onDeletePatient() {
+        var deleteConfirmationDialogObj = document.querySelector('#deleteConfirmationDialog');
+        if (deleteConfirmationDialogObj) {
+            deleteConfirmationDialogObj.ej2_instances[0].show();
+        }
+    }
+    function onDeleteClick() {
+        gridObj = document.querySelector('#fleetsGrid').ej2_instances[0];
+        gridObj.closeEdit();
+        gridObj.deleteRecord(activePatientData);
+        onDeleteCancelClick();
+        var data = {
+            prop: 'Id',
+            value: activePatientData.Id.toString()
+        };
+        fetch("@Url.Action("UpdateFleets", "Home")", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(data)
+        });
+    }
+    function onDeleteCancelClick() {
+        var deleteConfirmationDialogObj = document.querySelector('#deleteConfirmationDialog');
+        if (deleteConfirmationDialogObj) {
+            deleteConfirmationDialogObj.ej2_instances[0].hide();
+        }
+    }
+    function onEditPatient(e) {
+        var gridObj = document.querySelector('#fleetsGrid').ej2_instances[0];
+        gridObj.closeEdit();
+        showFleetDetails(e.rowData);
+    }
+    
+</script>
+
+@Html.EJS().ScriptManager()
+
+<style>
+.planner-patient-wrapper {
+  margin: 50px;
+}
+
+.planner-patient-wrapper header {
+  display: flex;
+}
+
+.planner-patient-wrapper header .module-title {
+  margin-left: 16.5px;
+}
+
+.planner-patient-wrapper header .add-patient {
+  flex: initial;
+  display: none;
+}
+
+.planner-patient-wrapper header .add-patient .e-icon-add {
+  padding: 9px 0 10px 20px;
+  font-size: 10px;
+  color: #7575FF;
+}
+
+.planner-patient-wrapper header .add-patient .e-icon-add::before {
+  content: '\e95c';
+}
+
+.planner-patient-wrapper header .add-patient .add-patient-label {
+  font-weight: 600;
+  font-size: 13px;
+  color: #7575FF;
+  letter-spacing: 0.39px;
+  padding: 7px;
+}
+
+.planner-patient-wrapper .patients-detail-wrapper .patient-operations {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.planner-patient-wrapper .patients-detail-wrapper .patient-operations .planner-patient-search.search-wrapper {
+  width: 190px;
+  margin-right: 16px;
+}
+
+.planner-patient-wrapper .patients-detail-wrapper .patient-operations .planner-patient-search.search-wrapper .e-input-group span.search-icon {
+  cursor: default;
+}
+
+.planner-patient-wrapper .patients-detail-wrapper .patient-operations .planner-patient-search.search-wrapper .e-input-group span.search-icon::before {
+  content: '\e993';
+}
+
+.planner-patient-wrapper .patients-detail-wrapper .patient-display {
+  margin-top: 17px;
+}
+
+.planner-patient-wrapper .patients-detail-wrapper .patient-display .e-grid .e-gridcontent tr.e-row td.e-rowcell .patient-name {
+  color: #7575FF;
+  cursor: pointer;
+}
+
+.e-dialog.e-edit-dialog {
+  max-height: 495px !important;
+}
+
+.e-dialog.e-edit-dialog .e-dlg-content .grid-edit-dialog {
+  width: 325px;
+  height: 360px;
+}
+
+.e-dialog.e-edit-dialog .e-dlg-content .grid-edit-dialog .field-row {
+  display: flex;
+  padding: 5px 0;
+}
+
+.e-dialog.e-edit-dialog .e-dlg-content .grid-edit-dialog .field-row label {
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  padding: 5px 0;
+}
+
+.e-dialog.e-edit-dialog .e-dlg-content .grid-edit-dialog .field-row label,
+.e-dialog.e-edit-dialog .e-dlg-content .grid-edit-dialog .field-row span {
+  flex: 1;
+}
+
+.e-dialog.e-edit-dialog .e-dlg-content .grid-edit-dialog .field-row span {
+  font-size: 14px;
+  color: #333333;
+  letter-spacing: 0.39px;
+}
+
+.e-dialog.e-edit-dialog .e-dlg-content .grid-edit-dialog .field-row.history-row {
+  flex-direction: column;
+}
+
+.e-dialog.e-edit-dialog .e-dlg-content .grid-edit-dialog .field-row.history-row label {
+  color: #7575FF !important;
+}
+
+.e-dialog.e-edit-dialog .e-dlg-content .grid-edit-dialog .field-row.history-row .history-content {
+  padding: 5px;
+  font-size: 13px;
+  color: #333333;
+  letter-spacing: 0.39px;
+  line-height: 18px;
+  margin: 10px 0;
+  border-left: 2px solid blue;
+}
+
+.e-dialog.e-edit-dialog .e-dlg-content .grid-edit-dialog .field-row.history-row .empty-container {
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.3px;
+  padding: 5px 10px;
+}
+
+.e-dialog.e-edit-dialog .e-footer-content :nth-child(1),
+.e-dialog.e-edit-dialog .e-footer-content :nth-child(2) {
+  display: none;
+}
+
+@@media (max-width: 850px) {
+  .planner-patient-wrapper {
+    margin: 20px 10px;
+  }
+
+  .planner-patient-wrapper header .module-title {
+    margin-left: 10px;
+    flex: 1;
+  }
+
+  .planner-patient-wrapper header .add-patient {
+    margin-right: 6px;
+    display: flex;
+    cursor: pointer;
+  }
+
+  .planner-patient-wrapper header .add-patient .add-patient-label {
+    font-weight: 500;
+  }
+
+  .planner-patient-wrapper .patients-detail-wrapper {
+    margin: 0;
+  }
+
+  .planner-patient-wrapper .patients-detail-wrapper .patient-operations {
+    margin-top: 3.3%;
+  }
+
+  .planner-patient-wrapper .patients-detail-wrapper .patient-operations .e-btn {
+    display: none;
+  }
+
+  .planner-patient-wrapper .patients-detail-wrapper .patient-operations .planner-patient-search.search-wrapper {
+    flex: 1;
+    margin: 0;
+  }
+
+  .planner-patient-wrapper .patients-detail-wrapper .patient-display {
+    margin-top: 3.3%;
+  }
+}
+</style>

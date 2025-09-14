@@ -14,13 +14,13 @@ namespace AppointmentPlanner.Models
         public int DepartmentId { get; set; }
         public int DoctorId { get; set; }
         public int PatientId { get; set; }
-        public string RecurrenceRule { get; set; }
+        public string? RecurrenceRule { get; set; }
         public string Symptoms { get; set; }
         public bool? IsAllDay { get; set; }
-        public string ElementType { get; set; }
+        public string? ElementType { get; set; }
         public bool IsBlock { get; set; }
         public Nullable<int> RecurrenceID { get; set; }
-        public string RecurrenceException { get; set; }
+        public string? RecurrenceException { get; set; }
     }
 
     public class Patient
@@ -29,7 +29,7 @@ namespace AppointmentPlanner.Models
         public int Id { get; set; }
         [Required(ErrorMessage = "Enter a valid name.")]
         public string Name { get; set; }
-        public string Text { get; set; }
+        public string? Text { get; set; }
         [Required(ErrorMessage = "Select a valid DOB.")]
         public DateTime? DOB { get; set; } = DateTime.Now;
         [Required(ErrorMessage = "Enter a valid mobile number.")]
@@ -38,8 +38,8 @@ namespace AppointmentPlanner.Models
         [RegularExpression("^[a-zA-Z0-9_\\.-]+@([a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,6}$", ErrorMessage = "A valid email address is required.")]
         public string Email { get; set; }
         public string Address { get; set; }
-        public string Disease { get; set; }
-        public string DepartmentName { get; set; }
+        public string? Disease { get; set; }
+        public string? DepartmentName { get; set; }
         [Required]
         public string BloodGroup { get; set; } = "AB +ve";
         public string Gender { get; set; } = "Male";
@@ -315,4 +315,6 @@ namespace AppointmentPlanner.Models
             return data;
         }
     }
+
+    
 }

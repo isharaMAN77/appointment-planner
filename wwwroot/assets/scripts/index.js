@@ -4,8 +4,9 @@
     plannerPage[page["calendar"] = 1] = "calendar";
     plannerPage[page["doctors"] = 2] = "doctors";
     plannerPage[page["patients"] = 3] = "patients";
-    plannerPage[page["preference"] = 4] = "preference";
-    plannerPage[page["about"] = 5] = "about";
+    plannerPage[page["fleets"] = 4] = "fleets";
+    plannerPage[page["preference"] = 5] = "preference";
+    plannerPage[page["about"] = 6] = "about";
 
 
 })(plannerPage || (plannerPage = {}));
@@ -25,6 +26,9 @@ function getCurrentPage() {
         case ('#/' + plannerPage[plannerPage.patients]):
             currentPage = plannerPage[plannerPage.patients];
             break;
+        case ('#/' + plannerPage[plannerPage.fleets]):
+            currentPage = plannerPage[plannerPage.fleets];
+            break;
         case ('#/' + plannerPage[plannerPage.preference]):
             currentPage = plannerPage[plannerPage.preference];
             break;
@@ -41,9 +45,9 @@ plannerSideBar();
 
 
 
-crossroads.addRoute('/:lang:', renderPartialContent).rules = { lang: ['dashboard', 'calendar', 'doctors', 'patients', 'preference', 'about'] };
+crossroads.addRoute('/:lang:', renderPartialContent).rules = { lang: ['dashboard', 'calendar', 'doctors', 'patients', 'fleets', 'preference', 'about'] };
 crossroads.bypassed.add(function (request) {
-    var samplePath = ['dashboard', 'calendar', 'doctors', 'patients', 'preference', 'about', 'doctor-details'];
+    var samplePath = ['dashboard', 'calendar', 'doctors', 'patients', 'fleets', 'preference', 'about', 'doctor-details'];
     var hash = request.split(' ')[0];
     var isDoctorDetail = hash.includes(samplePath[samplePath.length - 1]);
     if (samplePath.indexOf(hash) === -1 && !isDoctorDetail) {

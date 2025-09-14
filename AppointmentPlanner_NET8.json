@@ -1,0 +1,22 @@
+{
+  "openapi": "3.0.4",
+  "info": {
+    "title": "AppointmentPlanner API",
+    "version": "v1"
+  },
+  "paths": {
+    "/api/SampleApi/hello": {
+      "get": {
+        "tags": [
+          "SampleApi"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "components": { }
+}

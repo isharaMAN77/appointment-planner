@@ -6,7 +6,7 @@ using Newtonsoft.Json.Linq;
 using Syncfusion.EJ2.Schedule;
 
 namespace AppointmentPlanner.Controllers
-{
+{    
     public class HomeController : Controller
     {
         private readonly AppointmentService service;
@@ -94,6 +94,15 @@ namespace AppointmentPlanner.Controllers
             ViewBag.HospitalData = service.Hospitals.ToList();
             ViewBag.Doctors = service.Doctors.ToList();
             return PartialView("Patient/Patients");
+
+        }
+
+        [HttpGet]
+        public PartialViewResult Fleets()
+        {
+            ViewBag.Fleets = service.Fleets.ToList();
+            ViewBag.Depots= service.Depots.ToList();
+            return PartialView("Fleet/Fleets");
         }
 
         [HttpGet]
@@ -369,6 +378,19 @@ namespace AppointmentPlanner.Controllers
                 }
             }
         }
+        [HttpPost]
+        public async Task UpdateFleets([FromBody] Params param)
+        {
+            if (!string.IsNullOrEmpty(param.Value))
+            {
+                var fleet = await _context.Fleets.FindAsync(Convert.ToInt32(param.Value));
+                if (fleet != null)
+                {
+                    _context.Fleets.Remove(fleet);
+                    await _context.SaveChangesAsync();
+                }
+            }
+        }
 
         [HttpPost]
         public async Task<IActionResult> UpdatePatientData([FromBody] Patient patient)
@@ -401,6 +423,49 @@ namespace AppointmentPlanner.Controllers
             }
             return Ok(patient);
         }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateFleetData([FromBody] Fleet fleet)
+        {
+            if (fleet != null)
+            {
+                string dialogState = string.Empty;
+                if (fleet.ID == 0)
+                {
+                    dialogState = "new";
+                    _context.Fleets.Add(fleet);
+                    await _context.SaveChangesAsync();
+                }
+                else
+                {
+                    _context.Entry(fleet).State = EntityState.Modified;
+                    await _context.SaveChangesAsync();
+                    service.ActiveFleets = fleet;
+                }
+                Activity activity = new()
+                {
+                    Name = dialogState == "new" ? "Added New Fleet" : "Updated Fleet",
+                    Message = fleet.Registration + " for " + fleet.DepotID,
+                    Time = "10 mins ago",
+                    Type = "patient",
+                    ActivityTime = DateTime.Now
+                };
+                _context.Activities.Add(activity);
+                await _context.SaveChangesAsync();
+            }
+            return Ok(fleet);
+        }
+
+        [HttpPost]
+        public IActionResult findFleet([FromBody] string registration)
+        {
+            var fleet = service.GetFleetDetails(registration);
+            if (fleet == null)
+            { return NotFound(); }
+
+            else
+            { return Ok(fleet); }
+        }  
 
     }
 }

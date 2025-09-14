@@ -12,8 +12,13 @@ namespace AppointmentPlanner.Models
         {
             _context = context;
             StartDate = new DateTime(2020, 2, 5, 0, 0, 0, 0);
-            ActiveDoctors = _context.Doctors.FirstOrDefault();
-            ActivePatients = _context.Patients.FirstOrDefault();
+            var Depots = _context.Depots.ToList();
+            var Fleets = _context.Fleets.ToList();
+            var hospitals = _context.Hospitals.ToList();
+            var doctors = _context.Doctors.ToList();            
+            ActiveDoctors = doctors.FirstOrDefault();
+            var patients = _context.Patients.ToList();
+            ActivePatients = patients.FirstOrDefault();
             StartHours = DataProvider.GetStartHours();
             EndHours = DataProvider.GetEndHours();
             Views = DataProvider.GetViews();
@@ -28,6 +33,8 @@ namespace AppointmentPlanner.Models
         public DateTime StartDate { get; set; }
         public Doctor ActiveDoctors { get; set; }
         public Patient ActivePatients { get; set; }
+
+        public Fleet ActiveFleets { get; set; }
         public List<TextValueData> StartHours { get; set; }
         public List<TextValueData> EndHours { get; set; }
         public List<TextValueData> Views { get; set; }
@@ -38,6 +45,10 @@ namespace AppointmentPlanner.Models
         public IQueryable<Hospital> Hospitals => _context.Hospitals;
         public IQueryable<Patient> Patients => _context.Patients;
         public IQueryable<Doctor> Doctors => _context.Doctors;
+
+        public IQueryable<Depot> Depots => _context.Depots;
+        public IQueryable<Fleet> Fleets => _context.Fleets;
+        public List<TextValueData> DepotsGroups { get; set; }
         public List<Doctor> FilteredDoctors { get; set; }
         public IQueryable<WaitingList> WaitingLists => _context.WaitingLists;
         public IQueryable<Specialization> Specializations => _context.Specializations;
@@ -86,6 +97,10 @@ namespace AppointmentPlanner.Models
             return _context.Doctors.Include(d => d.WorkDays).FirstOrDefault(i => i.Id.Equals(id));
         }
 
+        public Fleet GetFleetDetails(string registration)
+        {
+            return _context.Fleets.FirstOrDefault(i => i.Registration.Equals(registration));
+        }
         public string GetSpecializationText(string text)
         {
             return _context.Specializations.FirstOrDefault(item => item.Id.Equals(text)).Text;

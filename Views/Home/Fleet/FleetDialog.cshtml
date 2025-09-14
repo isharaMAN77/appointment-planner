@@ -2,76 +2,64 @@
 @inject AppointmentService service
 
 @{
-    List<TextValueData> bloodGroupData = service.BloodGroups;
-    DateTime datepickerValue = new DateTime(1996, 1, 31);
+   DateTime datepickerValue = new DateTime(2020, 1, 31);
 }
 
 <div class="new-patient-container" style="display:none">
-  <ejs-dialog id="newPatientObj" width="390px" cssClass="new-patient-dialog" isModal="true" visible="false"
-    header="New Patient" showCloseIcon="true" target="body" beforeOpen="onPatientDialogBeforeOpen" footerTemplate="<div class='button-container'>
+  <ejs-dialog id="newFleetObj" width="390px" cssClass="new-patient-dialog" isModal="true" visible="false"
+    header="New Fleet" showCloseIcon="true" target="body" beforeOpen="onFleetDialogBeforeOpen" footerTemplate="<div class='button-container'>
     <button id='cancel'>Cancel</button><button id='save'>Save</button></div>">
     <e-dialog-animationsettings effect="None"></e-dialog-animationsettings>
     <e-content-template>
-      <form id="new-patient-form">
+      <form id="new-fleet-form">
         <div class="field-container name-container">
-          <ejs-textbox id="PatientName" name="Name" cssClass="patient-name e-field" placeholder="Patient Name"
+          <ejs-textbox id="Registration" name="Registration" cssClass="e-field" placeholder="Registration"
+            floatLabelType="Always"></ejs-textbox>
+        </div>
+        <div class="field-container make-container">
+        <div class="make">
+            <ejs-textbox id="Make" name="Make" cssClass="e-field" placeholder="Make"
+            floatLabelType="Always"></ejs-textbox>          
+        </div>
+        </div>
+        <div class="field-container model-container">
+          <ejs-textbox id="Model" name="Model" cssClass="e-field" placeholder="Model"
             floatLabelType="Always"></ejs-textbox>
         </div>
         <div class="field-container gender-container">
           <div class="gender">
-            <div><label>Gender</label></div>
-            <div class="e-btn-group e-round-corner e-field">
-              <input type="radio" id="doctorCheckMale" name="Gender" value="Male" checked />
-              <label class="e-btn" for="doctorCheckMale">Male</label>
-              <input type="radio" id="doctorCheckFemale" name="Gender" value="Female" />
-              <label class="e-btn" for="doctorCheckFemale">Female</label>
-            </div>
+            <div><label>Rented</label></div>           
+            <ejs-radiobutton id="radioRentedFalse" label="True" value="False" name="state" checked="true"></ejs-radiobutton>
+            <ejs-radiobutton id="radioRentedTrue" label="False" value="True" name="state"></ejs-radiobutton>
           </div>
           <div class="dob">
-            <ejs-datepicker id="DOB" cssClass="e-field" placeholder="DOB" value="@datepickerValue" floatLabelType="Always"
+            <ejs-datepicker id="Year" cssClass="e-field" placeholder="Year" value="datepickerValue" format="yyyy"  floatLabelType="Always"
               showClearButton="false"></ejs-datepicker>
           </div>
-        </div>
-        <div class="field-container contact-container">
-          <div class="blood-group">
-            <ejs-dropdownlist id="BloodGroup" width="125px" cssClass="e-field" placeholder="Blood Group" index=0
-              floatLabelType="Always" dataSource="@bloodGroupData">
-              <e-dropdownlist-fields text="Text" value="Value"></e-dropdownlist-fields>
+          <div class="depot">
+            <ejs-dropdownlist id="DepotID" width="125px" cssClass="e-field" placeholder="Select Depot" index=0 enabled="true"  name="DepotID"
+              floatLabelType="Always" dataSource="@ViewBag.Depots">
+              <e-dropdownlist-fields text="Name" value="ID"></e-dropdownlist-fields>
             </ejs-dropdownlist>
           </div>
-          <div class="mobile">
-            <ejs-maskedtextbox id="PatientMobile" name="Mobile" cssClass="e-field" width="180px" placeholder="Mobile Number"
-              mask="(999) 999-9999" floatLabelType="Always">
-            </ejs-maskedtextbox>
-          </div>
         </div>
-        <div class="field-container email-container">
-          <ejs-textbox cssClass="e-field" id="PatientEmail" name="Email" placeholder="Email" floatLabelType="Always">
-          </ejs-textbox>
-        </div>
-        <div class="field-container symptom-container">
-          <ejs-textbox cssClass="e-field" id="Symptoms" name="Symptoms" placeholder="Symptoms" floatLabelType="Always">
-          </ejs-textbox>
-        </div>
-        <div class="field-container address-container">
-          <ejs-textbox id="PatientAddress" name="Address" cssClass="patient-address e-field" placeholder="Patient Address"
-            floatLabelType="Always"></ejs-textbox>
-        </div>
+       
+          
       </form>
     </e-content-template>
   </ejs-dialog>
 </div>
 
 <script type="text/javascript">
-    var activePatientData;
-    function onAddPatient() {
-        if (document.querySelector("#newPatientObj")) {
-            var dialogObj = document.querySelector("#newPatientObj").ej2_instances[0];
-            dialogObj.header = 'New Patient';
+    var activeFleetData;
+    function onAddFleet() {
+        if (document.querySelector("#newFleetObj")) {
+            var dialogObj = document.querySelector("#newFleetObj").ej2_instances[0];
+            dialogObj.header = 'New Fleet';
             dialogObj.show();
         }
     }
-    function onPatientDialogBeforeOpen(args) {
+    function onFleetDialogBeforeOpen(args) {
         var cancelBtn = args.element.querySelector('#cancel');
         var saveBtn = args.element.querySelector('#save');
         if (cancelBtn) {
@@ -79,7 +67,7 @@
                 cssClass: 'e-normal'
             });
             btnObj.appendTo(cancelBtn);
-            cancelBtn.onclick = function (e) { onPatientCancelClick(e); };
+            cancelBtn.onclick = function (e) { onFleetCancelClick(e); };
         }
         if (saveBtn) {
             var btnObj = new ej.buttons.Button({
@@ -87,7 +75,7 @@
                 isPrimary: true
             });
             btnObj.appendTo(saveBtn);
-            saveBtn.onclick = function (e) { onPatientSaveClick(e); };
+            saveBtn.onclick = function (e) { onFleetSaveClick(e); };
         }
 
         var formElement = args.element.querySelector('#new-patient-form');
@@ -99,26 +87,22 @@
             return (argsLength !== 0) ? argsLength >= 10 : false;
         };
         var rules = {};
-        rules.Name = { required: [true, 'Enter valid name'] };
-        rules.DOB = { required: true, date: [true, 'Select valid DOB'] };
-        rules.Mobile = { required: [customFn, 'Enter valid mobile number'] };
-        rules.Email = { required: [true, 'Enter valid email'], email: [true, 'Email address is invalid'] };
-        rules.Address = { required: [true, 'Enter valid address'] };
+        rules.Registration = { required: [true, 'Enter valid name'] };       
         
-        renderFormValidator(formElement, rules, document.querySelector("#newPatientObj").ej2_instances[0].element);
+        renderFormValidator(formElement, rules, document.querySelector("#newFleetObj").ej2_instances[0].element);
     }
 
-    function onPatientSaveClick(e) {
+    function onFleetSaveClick(e) {
         var formElementContainer = document.querySelector('.new-patient-dialog #new-patient-form');
         if (formElementContainer && formElementContainer.classList.contains('e-formvalidator') &&
             !formElementContainer.ej2_instances[0].validate()) {
             return;
         }
-        var dialogObj = document.querySelector("#newPatientObj").ej2_instances[0];
-        var obj = dialogObj.header == 'New Patient' ? {} : activePatientData;
+        var dialogObj = document.querySelector("#newFleetObj").ej2_instances[0];
+        var obj = dialogObj.header == 'New Fleet' ? {} : activeFleetData;
         var formElement = [].slice.call(document.querySelectorAll('.new-patient-dialog .e-field'));
         for (var curElement of formElement) {
-            var columnName = curElement.querySelector('input').name;
+            var columnName = curElement.querySelector('input').name;            
             var isDropElement = curElement.classList.contains('e-ddl');
             var isDatePickElement = curElement.classList.contains('e-date-wrapper');
             if (!ej.base.isNullOrUndefined(columnName) || isDropElement || isDatePickElement) {
@@ -126,57 +110,90 @@
                     columnName = curElement.querySelector('select').name;
                     var instance = curElement.querySelector('input').ej2_instances[0];
                     obj[columnName] = instance.value;
-                } else if (columnName === 'DOB' && isDatePickElement) {
+                } else if (columnName === 'Year' && isDatePickElement) {
                     var instance = curElement.querySelector('input').ej2_instances[0];
                     obj[columnName] = instance.value;
-                } else if (columnName === 'Gender') {
-                    obj[columnName] = curElement.querySelector('input').checked ? 'Male' : 'Female';
+                } else if (columnName === 'Rented') {
+                    obj[columnName] = curElement.querySelector('input').checked ? 'False' : 'True';
+                 } else if (columnName === 'DepotID') {
+                    obj['DepotID'] = '1';
+                    
                 } else {
                     obj[columnName] = curElement.querySelector('input').value;
                 }
             }
         }
-        var ajaxHTML = new ej.base.Ajax('Home/UpdatePatientData', 'POST', true);
-        ajaxHTML.send(JSON.stringify(obj)).then(function (value) {
-            var gridele = document.querySelector('#patientsGrid')
-            var comboBoxEle = document.querySelector('.e-schedule-dialog #PatientName')
-            var currentRenderedPage = getCurrentPage();
-            if (currentRenderedPage === 'patients' && gridele && gridele.ej2_instances[0]) {
-                var gridObj = document.querySelector('#patientsGrid').ej2_instances[0];
-                if (dialogObj.header == 'New Patient') {
-                    obj.Id = Math.max.apply(Math, gridObj.dataSource.map(data => data.Id)) + 1;
-                    gridObj.addRecord(obj, gridObj.dataSource.length);
-                }
-                else {
-                    var index = gridObj.dataSource.findIndex(x => x.Id == activePatientData.Id);
-                    gridObj.dataSource[index] = obj;
-                    gridObj.refresh();
-                }
+        fetch('/Home/findFleet', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(obj['Registration'])
+        })
+        .then(response => {
+            if (response.ok) {
+                alert('Fleet found');
             }
-            else if (currentRenderedPage === 'calendar' && comboBoxEle && comboBoxEle.ej2_instances[0]) {
-                obj = JSON.parse(value);
-                var dataSource = comboBoxEle.ej2_instances[0].dataSource;
-                comboBoxEle.ej2_instances[0].dataSource = [];
-                dataSource.push(obj);
-                comboBoxEle.ej2_instances[0].dataSource = dataSource;
+            else if (!response.ok) {
+            // Handle the fleet data here
+             var ajaxHTML = new ej.base.Ajax('Home/UpdateFleetData', 'POST', true);
+            ajaxHTML.send(JSON.stringify(obj)).then(function (value) {
+                var gridele = document.querySelector('#fleetsGrid')
+                var comboBoxEle = document.querySelector('.e-schedule-dialog #Registration')
+                var currentRenderedPage = getCurrentPage();
+                if (currentRenderedPage === 'fleets' && gridele && gridele.ej2_instances[0]) {
+                    var gridObj = document.querySelector('#fleetsGrid').ej2_instances[0];
+                    if (dialogObj.header == 'New Fleet') {
+                        obj.Id = Math.max.apply(Math, gridObj.dataSource.map(data => data.Id)) + 1;
+                        gridObj.addRecord(obj, gridObj.dataSource.length);
+                    }
+                    else {
+                        var index = gridObj.dataSource.findIndex(x => x.Registration == activeFleetData.Registration);
+                        gridObj.dataSource[index] = obj;
+                        gridObj.refresh();
+                    }
+                }
+                else if (currentRenderedPage === 'calendar' && comboBoxEle && comboBoxEle.ej2_instances[0]) {
+                    obj = JSON.parse(value);
+                    var dataSource = comboBoxEle.ej2_instances[0].dataSource;
+                    comboBoxEle.ej2_instances[0].dataSource = [];
+                    dataSource.push(obj);
+                    comboBoxEle.ej2_instances[0].dataSource = dataSource;
+                }
+            }).catch(function (error) {
+                console.error('Error updating fleet data:', error);
+                alert('An error occurred while saving fleet data. Please check the console for details.');
+            });
+                resetFleetFormFields();
+                dialogObj = document.querySelector("#newFleetObj").ej2_instances[0];
+                dialogObj.hide();
+            // You can update the UI or process the data as needed
             }
-        }).catch(function (error) {
-            console.error('Error updating patient data:', error);
-            alert('An error occurred while saving patient data. Please check the console for details.');
-        });
-        resetPatientFormFields();
-        dialogObj = document.querySelector("#newPatientObj").ej2_instances[0];
-        dialogObj.hide();
+            
+        })
+        .then(data => {
+            if (!response.ok) {
+            // Handle the fleet data here
+            // The following code block was missing a closing brace for the .then() function
+           console.log('Fleet found:', data);
+
+            // You can update the UI or process the data as needed
+            }
+        })
+        .catch(error => {
+            // Handle errors here
+            console.error('Error:', error.message);
+        }); 
     }
 
-    function onPatientCancelClick(e) {
-        resetPatientFormFields();
-        if (document.querySelector("#newPatientObj")) {
-            var dialogObj = document.querySelector("#newPatientObj").ej2_instances[0];
+    function onFleetCancelClick(e) {
+        resetFleetFormFields();
+        if (document.querySelector("#newFleetObj")) {
+            var dialogObj = document.querySelector("#newFleetObj").ej2_instances[0];
             dialogObj.hide();
         }
     }
-    function resetPatientFormFields() {
+    function resetFleetFormFields() {
         var formElement = [].slice.call(document.querySelectorAll('.new-patient-dialog .e-field'));
         destroyErrorElement(document.querySelector('#new-patient-form'), formElement);
         for (var curElement of formElement) {
@@ -202,12 +219,54 @@
             }
         }
     }
-    function showPatientDetails(activeData) {
-        var dialogObj = document.querySelector("#newPatientObj").ej2_instances[0];
+        function findFleet(registration) {
+        fetch('/Home/findFleet', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(registration)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Fleet not found');
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Handle the fleet data here
+            console.log('Fleet found:', data);
+            // You can update the UI or process the data as needed
+        })
+        .catch(error => {
+            // Handle errors here
+            console.error('Error:', error.message);
+        });
+    }
+    function findFleetByRegistration(registration) 
+    {
+        return fetch('/Home/findFleet', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(registration)
+        })
+        .then(response => {
+             if (!response.ok) {
+                throw new Error(response);
+            }
+           
+            return response.json();
+        });
+    }
+    function showFleetDetails(activeData) {
+        var dialogObj = document.querySelector("#newFleetObj").ej2_instances[0];
         dialogObj.header = 'Edit Patient';
         dialogObj.show();
         var obj = activeData;
-        activePatientData = activeData;
+        activeFleetData = activeData;
+        var depotData = @Html.Raw(Json.Serialize(ViewBag.Depots));
         var formElement = [].slice.call(document.querySelectorAll('.new-patient-dialog .e-field'));
         for (var curElement of formElement) {
             var columnName = curElement.querySelector('input').name;
@@ -219,15 +278,15 @@
                     var instance = curElement.querySelector('input').ej2_instances[0];
                     instance.value = obj[columnName];
                     instance.dataBind();
-                } else if (columnName === 'DOB' && isDatePickElement) {
+                } else if (columnName === 'Year' && isDatePickElement) {
                     var instance = curElement.querySelector('input').ej2_instances[0];
                     instance.value = obj[columnName] || null;
-                } else if (columnName === 'Gender') {
-                    if (obj[columnName] === 'Male') {
-                        curElement.querySelectorAll('input')[0].checked = true;
-                    } else {
+                } else if (columnName === 'Rented') {
+                    if (obj[columnName] === 'True') {
                         curElement.querySelectorAll('input')[1].checked = true;
-                    }
+                    } else {
+                        curElement.querySelectorAll('input')[0].checked = true;
+                    }               
                 } else if (columnName === 'Mobile') {
                     curElement.querySelector('input').ej2_instances[0].value =
                         obj[columnName].replace(/[ -.*+?^${}()|[\]\\]/g, '');

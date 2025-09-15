@@ -24,6 +24,7 @@ namespace AppointmentPlanner.Models
             Views = DataProvider.GetViews();
             ColorCategory = DataProvider.GetColorCategory();
             BloodGroups = DataProvider.GetBloodGroupData();
+            Years = DataProvider.GetYearsData();
             DayOfWeekList = DataProvider.GetDayOfWeekList();
             TimeSlot = DataProvider.GetTimeSlot();
             DutyTimings = DataProvider.DutyTimingsData();
@@ -40,6 +41,7 @@ namespace AppointmentPlanner.Models
         public List<TextValueData> Views { get; set; }
         public List<TextValueData> ColorCategory { get; set; }
         public List<TextValueData> BloodGroups { get; set; }
+        public List<TextValueData> Years { get; set; }
         public List<TextValueNumericData> DayOfWeekList { get; set; }
         public List<TextValueNumericData> TimeSlot { get; set; }
         public IQueryable<Hospital> Hospitals => _context.Hospitals;

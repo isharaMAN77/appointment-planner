@@ -287,6 +287,20 @@ namespace AppointmentPlanner.Models
             };
             return data;
         }
+
+        public static List<TextValueData> GetYearsData()
+        {
+            int currentYear = DateTime.Now.Year;
+            List<TextValueData> data = new List<TextValueData>();
+
+            for (int i = 0; i <= 20; i++)
+            {
+                data.Add(new TextValueData { Value = (currentYear - i).ToString(), Text = (currentYear - i).ToString() });
+
+            }
+            return data;
+
+        }
         public static List<TextValueNumericData> GetTimeSlot()
         {
             List<TextValueNumericData> data = new List<TextValueNumericData>

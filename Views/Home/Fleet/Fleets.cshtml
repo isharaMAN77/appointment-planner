@@ -67,7 +67,39 @@
     </div>
 </div>
 <partial name="/Views/Home/Fleet/FleetDialog.cshtml" /> 
+<div class="delete-confirmation-container" style="display:none">
+    <ejs-dialog id="deleteConfirmationDialog" width="445px" cssClass="break-hour-dialog" isModal="true" beforeOpen="dialogOpen" visible="false" header="Patient Details" showCloseIcon="true" target="body" footerTemplate="<div class='button-container'>
+        <button id='delete_confirm'>Ok</button><button id='cancel'>Cancel</button>">
+        <e-dialog-animationsettings effect="None"></e-dialog-animationsettings>
+        <e-content-template>
+            <form>
+                <div>
+                    Are you sure you want to delete this patient?
+                </div>
+            </form>
+        </e-content-template>
+    </ejs-dialog>
+</div>
 <script type="text/javascript">
+    function dialogOpen(args) {
+        var deleteBtn = args.element.querySelector('#delete_confirm');
+        var cancelBtn = args.element.querySelector('#cancel');
+        if (deleteBtn) {
+            var btnObj = new ej.buttons.Button({
+                cssClass: 'e-normal',
+                isPrimary: true
+            });
+            btnObj.appendTo(deleteBtn);
+            deleteBtn.onclick = function (e) { onDeleteClick(); };
+        }
+        if (cancelBtn) {
+            var btnObj = new ej.buttons.Button({
+                cssClass: 'e-normal'
+            });
+            btnObj.appendTo(cancelBtn);
+            cancelBtn.onclick = function (e) { onDeleteCancelClick(); };
+        }
+    }
     function getColor(data) {
         return 'background-color:' + data.color + ';';
     }
@@ -100,7 +132,7 @@
             fields.forEach(field => {
                 var value;
                 if (field === 'Year' && !ej.base.isNullOrUndefined(activePatientData[field])) {
-                    value = intl.formatDate(activePatientData[field], { skeleton: 'y' }).toString();
+                    value = activePatientData[field].toString();//intl.formatDate(activePatientData[field], { skeleton: 'yyyy' }).toString();
                 } 
                 else if (field === 'Rented')   {
                     if (activePatientData[field].toString()=='true') {
@@ -119,7 +151,7 @@
                 args.dialog.element.querySelector('#' + field).innerHTML = value;
             });
             var editButtonElement = ej.base.createElement('button', {
-                className: 'edit-patient',
+                className: 'edit-fleet',
                 id: 'edit',
                 innerHTML: 'Edit',
                 attrs: { type: 'button', title: 'Edit' }
@@ -152,8 +184,8 @@
         gridObj.deleteRecord(activePatientData);
         onDeleteCancelClick();
         var data = {
-            prop: 'Id',
-            value: activePatientData.Id.toString()
+            prop: 'ID',
+            value: activePatientData.ID.toString()
         };
         fetch("@Url.Action("UpdateFleets", "Home")", {
             method: "POST",
@@ -173,7 +205,9 @@
         var gridObj = document.querySelector('#fleetsGrid').ej2_instances[0];
         gridObj.closeEdit();
         showFleetDetails(e.rowData);
-    }
+    } 
+   
+    
     
 </script>
 

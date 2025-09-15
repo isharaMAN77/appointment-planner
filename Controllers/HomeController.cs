@@ -101,7 +101,7 @@ namespace AppointmentPlanner.Controllers
         public PartialViewResult Fleets()
         {
             ViewBag.Fleets = service.Fleets.ToList();
-            ViewBag.Depots= service.Depots.ToList();
+            ViewBag.Depots= service.Depots.ToList();            
             return PartialView("Fleet/Fleets");
         }
 
@@ -269,7 +269,7 @@ namespace AppointmentPlanner.Controllers
             }
             return Ok(doctor);
         }
-
+        
         private void UpdateWorkHours(Doctor data)
         {
             string dutyString = service.DutyTimings.Where(item => item.Id.Equals(data.DutyTiming)).FirstOrDefault().Text;
@@ -427,45 +427,65 @@ namespace AppointmentPlanner.Controllers
         [HttpPost]
         public async Task<IActionResult> UpdateFleetData([FromBody] Fleet fleet)
         {
-            if (fleet != null)
+            try
             {
-                string dialogState = string.Empty;
-                if (fleet.ID == 0)
+                if (fleet != null)
                 {
-                    dialogState = "new";
-                    _context.Fleets.Add(fleet);
+                    string dialogState = string.Empty;
+                    if (fleet.ID == 0)
+                    {
+                        dialogState = "new";
+                        _context.Fleets.Add(fleet);
+                        await _context.SaveChangesAsync();
+                    }
+                    else
+                    {
+                        // Get the instance you want to detach
+                        var originalFleet = _context.Fleets.Find(fleet.ID);
+                        _context.Entry(originalFleet).State = EntityState.Detached;
+
+                        // Now attach the new instance
+                        _context.Fleets.Attach(fleet);
+
+                        _context.Entry(fleet).State = EntityState.Modified;
+                        await _context.SaveChangesAsync();
+                        service.ActiveFleets = fleet;
+                    }
+                    Activity activity = new()
+                    {
+                        Name = dialogState == "new" ? "Added New Fleet" : "Updated Fleet",
+                        Message = fleet.Registration + " for " + fleet.DepotID,
+                        Time = "10 mins ago",
+                        Type = "patient",
+                        ActivityTime = DateTime.Now
+                    };
+                    _context.Activities.Add(activity);
                     await _context.SaveChangesAsync();
                 }
-                else
-                {
-                    _context.Entry(fleet).State = EntityState.Modified;
-                    await _context.SaveChangesAsync();
-                    service.ActiveFleets = fleet;
-                }
-                Activity activity = new()
-                {
-                    Name = dialogState == "new" ? "Added New Fleet" : "Updated Fleet",
-                    Message = fleet.Registration + " for " + fleet.DepotID,
-                    Time = "10 mins ago",
-                    Type = "patient",
-                    ActivityTime = DateTime.Now
-                };
-                _context.Activities.Add(activity);
-                await _context.SaveChangesAsync();
+                return Ok(fleet);
             }
-            return Ok(fleet);
+            catch (Exception ex)
+            {
+                // Log the exception as needed
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
 
         [HttpPost]
-        public IActionResult findFleet([FromBody] string registration)
+        public async Task<IActionResult> findFleet([FromBody] Fleet fleet)
         {
-            var fleet = service.GetFleetDetails(registration);
-            if (fleet == null)
-            { return NotFound(); }
+            // Check for duplicate registration
+            var existingFleet = await _context.Fleets
+                .AsNoTracking()
+                .FirstOrDefaultAsync(f => f.Registration == fleet.Registration && f.ID != fleet.ID);
 
-            else
-            { return Ok(fleet); }
+            if (existingFleet != null)
+            {
+                return Conflict( $"A fleet with registration '{fleet.Registration}' already exists.");
+            }
+            return Ok();
+
         }  
-
+  
     }
 }

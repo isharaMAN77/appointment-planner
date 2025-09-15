@@ -3,6 +3,7 @@
 
 @{
    DateTime datepickerValue = new DateTime(2020, 1, 31);
+   List<TextValueData> yearsData = service.Years;
 }
 
 <div class="new-patient-container" style="display:none">
@@ -23,26 +24,35 @@
         </div>
         </div>
         <div class="field-container model-container">
+        <div class="model">
           <ejs-textbox id="Model" name="Model" cssClass="e-field" placeholder="Model"
             floatLabelType="Always"></ejs-textbox>
         </div>
-        <div class="field-container gender-container">
-          <div class="gender">
+    </div>
+        <div class="field-container rented-container">
+          <div class="rented">
             <div><label>Rented</label></div>           
             <ejs-radiobutton id="radioRentedFalse" label="True" value="False" name="state" checked="true"></ejs-radiobutton>
             <ejs-radiobutton id="radioRentedTrue" label="False" value="True" name="state"></ejs-radiobutton>
           </div>
-          <div class="dob">
-            <ejs-datepicker id="Year" cssClass="e-field" placeholder="Year" value="datepickerValue" format="yyyy"  floatLabelType="Always"
-              showClearButton="false"></ejs-datepicker>
+        </div>
+          <div class="field-container year-container">
+          <div class="dob"> 
+               <ejs-dropdownlist id="Year" width="125px" cssClass="e-field" placeholder="Select a Year" index=0
+              floatLabelType="Always" dataSource="@yearsData">
+              <e-dropdownlist-fields text="Text" value="Value"></e-dropdownlist-fields>
+            </ejs-dropdownlist>            
           </div>
-          <div class="depot">
+            </div>
+        <div class="field-container depot-container">
+          <div class="depot">              
             <ejs-dropdownlist id="DepotID" width="125px" cssClass="e-field" placeholder="Select Depot" index=0 enabled="true"  name="DepotID"
               floatLabelType="Always" dataSource="@ViewBag.Depots">
               <e-dropdownlist-fields text="Name" value="ID"></e-dropdownlist-fields>
             </ejs-dropdownlist>
           </div>
         </div>
+       
        
           
       </form>
@@ -110,82 +120,57 @@
                     columnName = curElement.querySelector('select').name;
                     var instance = curElement.querySelector('input').ej2_instances[0];
                     obj[columnName] = instance.value;
-                } else if (columnName === 'Year' && isDatePickElement) {
+                } else if (columnName === 'Year' && isDropElement) {
+                     columnName = curElement.querySelector('select').name;
                     var instance = curElement.querySelector('input').ej2_instances[0];
                     obj[columnName] = instance.value;
                 } else if (columnName === 'Rented') {
                     obj[columnName] = curElement.querySelector('input').checked ? 'False' : 'True';
-                 } else if (columnName === 'DepotID') {
+                } else if (columnName === 'DepotID') {
                     obj['DepotID'] = '1';
-                    
                 } else {
                     obj[columnName] = curElement.querySelector('input').value;
                 }
             }
         }
-        fetch('/Home/findFleet', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(obj['Registration'])
-        })
-        .then(response => {
-            if (response.ok) {
-                alert('Fleet found');
-            }
-            else if (!response.ok) {
-            // Handle the fleet data here
-             var ajaxHTML = new ej.base.Ajax('Home/UpdateFleetData', 'POST', true);
-            ajaxHTML.send(JSON.stringify(obj)).then(function (value) {
-                var gridele = document.querySelector('#fleetsGrid')
-                var comboBoxEle = document.querySelector('.e-schedule-dialog #Registration')
-                var currentRenderedPage = getCurrentPage();
-                if (currentRenderedPage === 'fleets' && gridele && gridele.ej2_instances[0]) {
-                    var gridObj = document.querySelector('#fleetsGrid').ej2_instances[0];
-                    if (dialogObj.header == 'New Fleet') {
-                        obj.Id = Math.max.apply(Math, gridObj.dataSource.map(data => data.Id)) + 1;
-                        gridObj.addRecord(obj, gridObj.dataSource.length);
-                    }
-                    else {
-                        var index = gridObj.dataSource.findIndex(x => x.Registration == activeFleetData.Registration);
-                        gridObj.dataSource[index] = obj;
-                        gridObj.refresh();
-                    }
-                }
-                else if (currentRenderedPage === 'calendar' && comboBoxEle && comboBoxEle.ej2_instances[0]) {
-                    obj = JSON.parse(value);
-                    var dataSource = comboBoxEle.ej2_instances[0].dataSource;
-                    comboBoxEle.ej2_instances[0].dataSource = [];
-                    dataSource.push(obj);
-                    comboBoxEle.ej2_instances[0].dataSource = dataSource;
-                }
-            }).catch(function (error) {
-                console.error('Error updating fleet data:', error);
-                alert('An error occurred while saving fleet data. Please check the console for details.');
-            });
-                resetFleetFormFields();
-                dialogObj = document.querySelector("#newFleetObj").ej2_instances[0];
-                dialogObj.hide();
-            // You can update the UI or process the data as needed
-            }
-            
-        })
-        .then(data => {
-            if (!response.ok) {
-            // Handle the fleet data here
-            // The following code block was missing a closing brace for the .then() function
-           console.log('Fleet found:', data);
+               
 
-            // You can update the UI or process the data as needed
+
+        var ajaxHTML = new ej.base.Ajax('Home/UpdateFleetData', 'POST', true);
+        ajaxHTML.send(JSON.stringify(obj)).then(function (value) {
+            var gridele = document.querySelector('#fleetsGrid');
+            var comboBoxEle = document.querySelector('.e-schedule-dialog #Registration');
+            var currentRenderedPage = getCurrentPage();
+            if (currentRenderedPage === 'fleets' && gridele && gridele.ej2_instances[0]) {
+                var gridObj = document.querySelector('#fleetsGrid').ej2_instances[0];
+                if (dialogObj.header == 'New Fleet') {
+                    obj.Id = Math.max.apply(Math, gridObj.dataSource.map(data => data.Id)) + 1;
+                    gridObj.addRecord(obj, gridObj.dataSource.length);
+                }
+                else {
+                    var index = gridObj.dataSource.findIndex(x => x.Registration == activeFleetData.Registration);
+                    gridObj.dataSource[index] = obj;
+                    gridObj.refresh();
+                }
             }
-        })
-        .catch(error => {
-            // Handle errors here
-            console.error('Error:', error.message);
-        }); 
+            else if (currentRenderedPage === 'calendar' && comboBoxEle && comboBoxEle.ej2_instances[0]) {
+                obj = JSON.parse(value);
+                var dataSource = comboBoxEle.ej2_instances[0].dataSource;
+                comboBoxEle.ej2_instances[0].dataSource = [];
+                dataSource.push(obj);
+                comboBoxEle.ej2_instances[0].dataSource = dataSource;
+            }
+            resetFleetFormFields();
+            dialogObj = document.querySelector("#newFleetObj").ej2_instances[0];
+            dialogObj.hide();
+        }).catch(function (error) {
+            console.error('Error updating fleet data:', error.message);
+            alert('An error occurred while saving fleet data. Please check the console for details.'+ error.message);
+        });
+        
     }
-
+        
+   
     function onFleetCancelClick(e) {
         resetFleetFormFields();
         if (document.querySelector("#newFleetObj")) {
@@ -262,7 +247,7 @@
     }
     function showFleetDetails(activeData) {
         var dialogObj = document.querySelector("#newFleetObj").ej2_instances[0];
-        dialogObj.header = 'Edit Patient';
+        dialogObj.header = 'Edit Fleet';
         dialogObj.show();
         var obj = activeData;
         activeFleetData = activeData;
